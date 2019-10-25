@@ -4,7 +4,7 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 /**
  * --------------------------------------------------------------------------
- * CoreUI (v2.0.6): aside-menu.js
+ * CoreUI (v2.1.16): aside-menu.js
  * Licensed under MIT (https://coreui.io/license)
  * --------------------------------------------------------------------------
  */
@@ -15,7 +15,7 @@ var AsideMenu = function ($) {
    * ------------------------------------------------------------------------
    */
   var NAME = 'aside-menu';
-  var VERSION = '2.0.6';
+  var VERSION = '2.1.16';
   var DATA_KEY = 'coreui.aside-menu';
   var EVENT_KEY = "." + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -43,6 +43,8 @@ var AsideMenu = function ($) {
     function AsideMenu(element) {
       this._element = element;
 
+      this._removeEventListeners();
+
       this._addEventListeners();
     } // Getters
 
@@ -51,14 +53,18 @@ var AsideMenu = function ($) {
 
     // Private
     _proto._addEventListeners = function _addEventListeners() {
-      $(Selector.ASIDE_MENU_TOGGLER).on(Event.CLICK, function (event) {
+      $(document).on(Event.CLICK, Selector.ASIDE_MENU_TOGGLER, function (event) {
         event.preventDefault();
         event.stopPropagation();
-        var toggle = event.currentTarget.dataset.toggle;
+        var toggle = event.currentTarget.dataset ? event.currentTarget.dataset.toggle : $(event.currentTarget).data('toggle');
         toggleClasses(toggle, ShowClassNames);
       });
-    }; // Static
+    };
 
+    _proto._removeEventListeners = function _removeEventListeners() {
+      $(document).off(Event.CLICK, Selector.ASIDE_MENU_TOGGLER);
+    } // Static
+    ;
 
     AsideMenu._jQueryInterface = function _jQueryInterface() {
       return this.each(function () {
@@ -88,7 +94,7 @@ var AsideMenu = function ($) {
    */
 
 
-  $(window).on(Event.LOAD_DATA_API, function () {
+  $(window).one(Event.LOAD_DATA_API, function () {
     var asideMenu = $(Selector.ASIDE_MENU);
 
     AsideMenu._jQueryInterface.call(asideMenu);

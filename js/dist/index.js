@@ -1,6 +1,8 @@
+import "core-js/modules/es.string.split";
+
 /**
  * --------------------------------------------------------------------------
- * CoreUI (v2.0.6): index.js
+ * CoreUI (v2.1.16): index.js
  * Licensed under MIT (https://coreui.io/license)
  * --------------------------------------------------------------------------
  */

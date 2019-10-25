@@ -1,10 +1,14 @@
+import "core-js/modules/es.array.find";
+import "core-js/modules/es.array.slice";
+import "core-js/modules/es.string.split";
+
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
 /**
  * --------------------------------------------------------------------------
- * CoreUI (v2.0.6): sidebar.js
+ * CoreUI (v2.1.16): sidebar.js
  * Licensed under MIT (https://coreui.io/license)
  * --------------------------------------------------------------------------
  */
@@ -15,15 +19,19 @@ var Sidebar = function ($) {
    * ------------------------------------------------------------------------
    */
   var NAME = 'sidebar';
-  var VERSION = '2.0.6';
+  var VERSION = '2.1.16';
   var DATA_KEY = 'coreui.sidebar';
   var EVENT_KEY = "." + DATA_KEY;
   var DATA_API_KEY = '.data-api';
   var JQUERY_NO_CONFLICT = $.fn[NAME];
+  var Default = {
+    transition: 400
+  };
   var ClassName = {
     ACTIVE: 'active',
     BRAND_MINIMIZED: 'brand-minimized',
     NAV_DROPDOWN_TOGGLE: 'nav-dropdown-toggle',
+    NAV_LINK_QUERIED: 'nav-link-queried',
     OPEN: 'open',
     SIDEBAR_FIXED: 'sidebar-fixed',
     SIDEBAR_MINIMIZED: 'sidebar-minimized',
@@ -34,7 +42,8 @@ var Sidebar = function ($) {
     DESTROY: 'destroy',
     INIT: 'init',
     LOAD_DATA_API: "load" + EVENT_KEY + DATA_API_KEY,
-    TOGGLE: 'toggle'
+    TOGGLE: 'toggle',
+    UPDATE: 'update'
   };
   var Selector = {
     BODY: 'body',
@@ -43,11 +52,13 @@ var Sidebar = function ($) {
     NAV_DROPDOWN_ITEMS: '.nav-dropdown-items',
     NAV_ITEM: '.nav-item',
     NAV_LINK: '.nav-link',
+    NAV_LINK_QUERIED: '.nav-link-queried',
     NAVIGATION_CONTAINER: '.sidebar-nav',
     NAVIGATION: '.sidebar-nav > .nav',
     SIDEBAR: '.sidebar',
     SIDEBAR_MINIMIZER: '.sidebar-minimizer',
-    SIDEBAR_TOGGLER: '.sidebar-toggler'
+    SIDEBAR_TOGGLER: '.sidebar-toggler',
+    SIDEBAR_SCROLL: '.sidebar-scroll'
   };
   var ShowClassNames = ['sidebar-show', 'sidebar-sm-show', 'sidebar-md-show', 'sidebar-lg-show', 'sidebar-xl-show'];
   /**
@@ -61,10 +72,18 @@ var Sidebar = function ($) {
   function () {
     function Sidebar(element) {
       this._element = element;
+      this.mobile = false;
+      this.ps = null;
       this.perfectScrollbar(Event.INIT);
       this.setActiveLink();
+      this._breakpointTest = this._breakpointTest.bind(this);
+      this._clickOutListener = this._clickOutListener.bind(this);
+
+      this._removeEventListeners();
 
       this._addEventListeners();
+
+      this._addMediaQuery();
     } // Getters
 
 
@@ -72,43 +91,75 @@ var Sidebar = function ($) {
 
     // Public
     _proto.perfectScrollbar = function perfectScrollbar(event) {
-      if (typeof PerfectScrollbar !== 'undefined') {
-        var ps;
+      var _this = this;
 
-        if (event === Event.INIT && !document.body.classList.contains(ClassName.SIDEBAR_MINIMIZED)) {
-          ps = new PerfectScrollbar(document.querySelector(Selector.NAVIGATION_CONTAINER), {
-            suppressScrollX: true
-          });
+      if (typeof PerfectScrollbar !== 'undefined') {
+        var classList = document.body.classList;
+
+        if (event === Event.INIT && !classList.contains(ClassName.SIDEBAR_MINIMIZED)) {
+          this.ps = this.makeScrollbar();
         }
 
         if (event === Event.DESTROY) {
-          ps = new PerfectScrollbar(document.querySelector(Selector.NAVIGATION_CONTAINER), {
-            suppressScrollX: true
-          });
-          ps.destroy();
-          ps = null;
+          this.destroyScrollbar();
         }
 
         if (event === Event.TOGGLE) {
-          if (document.body.classList.contains(ClassName.SIDEBAR_MINIMIZED)) {
-            ps = new PerfectScrollbar(document.querySelector(Selector.NAVIGATION_CONTAINER), {
-              suppressScrollX: true
-            });
-            ps.destroy();
-            ps = null;
+          if (classList.contains(ClassName.SIDEBAR_MINIMIZED)) {
+            this.destroyScrollbar();
           } else {
-            ps = new PerfectScrollbar(document.querySelector(Selector.NAVIGATION_CONTAINER), {
-              suppressScrollX: true
-            });
+            this.destroyScrollbar();
+            this.ps = this.makeScrollbar();
           }
         }
+
+        if (event === Event.UPDATE && !classList.contains(ClassName.SIDEBAR_MINIMIZED)) {
+          // ToDo: Add smooth transition
+          setTimeout(function () {
+            _this.destroyScrollbar();
+
+            _this.ps = _this.makeScrollbar();
+          }, Default.transition);
+        }
+      }
+    };
+
+    _proto.makeScrollbar = function makeScrollbar() {
+      var container = Selector.SIDEBAR_SCROLL;
+
+      if (document.querySelector(container) === null) {
+        container = Selector.NAVIGATION_CONTAINER;
+
+        if (document.querySelector(container) === null) {
+          return null;
+        }
+      }
+
+      var ps = new PerfectScrollbar(document.querySelector(container), {
+        suppressScrollX: true
+      }); // ToDo: find real fix for ps rtl
+
+      ps.isRtl = false;
+      return ps;
+    };
+
+    _proto.destroyScrollbar = function destroyScrollbar() {
+      if (this.ps) {
+        this.ps.destroy();
+        this.ps = null;
       }
     };
 
     _proto.setActiveLink = function setActiveLink() {
       $(Selector.NAVIGATION).find(Selector.NAV_LINK).each(function (key, value) {
         var link = value;
-        var cUrl = String(window.location).split('?')[0];
+        var cUrl;
+
+        if (link.classList.contains(ClassName.NAV_LINK_QUERIED)) {
+          cUrl = String(window.location);
+        } else {
+          cUrl = String(window.location).split('?')[0];
+        }
 
         if (cUrl.substr(cUrl.length - 1) === '#') {
           cUrl = cUrl.slice(0, -1);
@@ -121,41 +172,106 @@ var Sidebar = function ($) {
           });
         }
       });
-    }; // Private
+    } // Private
+    ;
 
+    _proto._addMediaQuery = function _addMediaQuery() {
+      var sm = getStyle('--breakpoint-sm');
+
+      if (!sm) {
+        return;
+      }
+
+      var smVal = parseInt(sm, 10) - 1;
+      var mediaQueryList = window.matchMedia("(max-width: " + smVal + "px)");
+
+      this._breakpointTest(mediaQueryList);
+
+      mediaQueryList.addListener(this._breakpointTest);
+    };
+
+    _proto._breakpointTest = function _breakpointTest(e) {
+      this.mobile = Boolean(e.matches);
+
+      this._toggleClickOut();
+    };
+
+    _proto._clickOutListener = function _clickOutListener(event) {
+      if (!this._element.contains(event.target)) {
+        // or use: event.target.closest(Selector.SIDEBAR) === null
+        event.preventDefault();
+        event.stopPropagation();
+
+        this._removeClickOut();
+
+        document.body.classList.remove('sidebar-show');
+      }
+    };
+
+    _proto._addClickOut = function _addClickOut() {
+      document.addEventListener(Event.CLICK, this._clickOutListener, true);
+    };
+
+    _proto._removeClickOut = function _removeClickOut() {
+      document.removeEventListener(Event.CLICK, this._clickOutListener, true);
+    };
+
+    _proto._toggleClickOut = function _toggleClickOut() {
+      if (this.mobile && document.body.classList.contains('sidebar-show')) {
+        document.body.classList.remove('aside-menu-show');
+
+        this._addClickOut();
+      } else {
+        this._removeClickOut();
+      }
+    };
 
     _proto._addEventListeners = function _addEventListeners() {
-      var _this = this;
+      var _this2 = this;
 
-      $(Selector.BRAND_MINIMIZER).on(Event.CLICK, function (event) {
+      $(document).on(Event.CLICK, Selector.BRAND_MINIMIZER, function (event) {
         event.preventDefault();
         event.stopPropagation();
         $(Selector.BODY).toggleClass(ClassName.BRAND_MINIMIZED);
       });
-      $(Selector.NAV_DROPDOWN_TOGGLE).on(Event.CLICK, function (event) {
+      $(document).on(Event.CLICK, Selector.NAV_DROPDOWN_TOGGLE, function (event) {
         event.preventDefault();
         event.stopPropagation();
         var dropdown = event.target;
         $(dropdown).parent().toggleClass(ClassName.OPEN);
+
+        _this2.perfectScrollbar(Event.UPDATE);
       });
-      $(Selector.SIDEBAR_MINIMIZER).on(Event.CLICK, function (event) {
+      $(document).on(Event.CLICK, Selector.SIDEBAR_MINIMIZER, function (event) {
         event.preventDefault();
         event.stopPropagation();
         $(Selector.BODY).toggleClass(ClassName.SIDEBAR_MINIMIZED);
 
-        _this.perfectScrollbar(Event.TOGGLE);
+        _this2.perfectScrollbar(Event.TOGGLE);
       });
-      $(Selector.SIDEBAR_TOGGLER).on(Event.CLICK, function (event) {
+      $(document).on(Event.CLICK, Selector.SIDEBAR_TOGGLER, function (event) {
         event.preventDefault();
         event.stopPropagation();
-        var toggle = event.currentTarget.dataset.toggle;
+        var toggle = event.currentTarget.dataset ? event.currentTarget.dataset.toggle : $(event.currentTarget).data('toggle');
         toggleClasses(toggle, ShowClassNames);
+
+        _this2._toggleClickOut();
       });
       $(Selector.NAVIGATION + " > " + Selector.NAV_ITEM + " " + Selector.NAV_LINK + ":not(" + Selector.NAV_DROPDOWN_TOGGLE + ")").on(Event.CLICK, function () {
+        _this2._removeClickOut();
+
         document.body.classList.remove('sidebar-show');
       });
-    }; // Static
+    };
 
+    _proto._removeEventListeners = function _removeEventListeners() {
+      $(document).off(Event.CLICK, Selector.BRAND_MINIMIZER);
+      $(document).off(Event.CLICK, Selector.NAV_DROPDOWN_TOGGLE);
+      $(document).off(Event.CLICK, Selector.SIDEBAR_MINIMIZER);
+      $(document).off(Event.CLICK, Selector.SIDEBAR_TOGGLER);
+      $(Selector.NAVIGATION + " > " + Selector.NAV_ITEM + " " + Selector.NAV_LINK + ":not(" + Selector.NAV_DROPDOWN_TOGGLE + ")").off(Event.CLICK);
+    } // Static
+    ;
 
     Sidebar._jQueryInterface = function _jQueryInterface() {
       return this.each(function () {
@@ -185,7 +301,7 @@ var Sidebar = function ($) {
    */
 
 
-  $(window).on(Event.LOAD_DATA_API, function () {
+  $(window).one(Event.LOAD_DATA_API, function () {
     var sidebar = $(Selector.SIDEBAR);
 
     Sidebar._jQueryInterface.call(sidebar);

@@ -1,10 +1,18 @@
+import "core-js/modules/es.array.from";
+import "core-js/modules/es.array.map";
+import "core-js/modules/es.object.assign";
+import "core-js/modules/es.string.iterator";
+import "core-js/modules/es.string.replace";
+import "core-js/modules/es.string.split";
+import "core-js/modules/web.dom-collections.for-each";
+
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
 /**
  * --------------------------------------------------------------------------
- * CoreUI (v2.0.6): ajax-load.js
+ * CoreUI (v2.1.16): ajax-load.js
  * Licensed under MIT (https://coreui.io/license)
  * --------------------------------------------------------------------------
  */
@@ -15,7 +23,7 @@ var AjaxLoad = function ($) {
    * ------------------------------------------------------------------------
    */
   var NAME = 'ajaxLoad';
-  var VERSION = '2.0.6';
+  var VERSION = '2.1.16';
   var DATA_KEY = 'coreui.ajaxLoad';
   var JQUERY_NO_CONFLICT = $.fn[NAME];
   var ClassName = {
@@ -54,6 +62,8 @@ var AjaxLoad = function ($) {
       } else {
         this.setUpUrl(this._config.defaultPage);
       }
+
+      this._removeEventListeners();
 
       this._addEventListeners();
     } // Getters
@@ -135,11 +145,11 @@ var AjaxLoad = function ($) {
 
     _proto.loadTop = function loadTop(url) {
       window.location = url;
-    }; // Private
-
+    } // Private
+    ;
 
     _proto._getConfig = function _getConfig(config) {
-      config = Object.assign({}, Default, config);
+      config = Object.assign({}, Default, {}, config);
       return config;
     };
 
@@ -158,8 +168,12 @@ var AjaxLoad = function ($) {
           _this.setUpUrl(event.currentTarget.getAttribute('href'));
         }
       });
-    }; // Static
+    };
 
+    _proto._removeEventListeners = function _removeEventListeners() {
+      $(document).off(Event.CLICK, Selector.NAV_LINK + "[href!=\"#\"]");
+    } // Static
+    ;
 
     AjaxLoad._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
